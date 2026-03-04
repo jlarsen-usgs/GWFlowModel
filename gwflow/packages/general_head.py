@@ -1,4 +1,3 @@
-import numpy as np
 from .stress_package import StressPakBase
 
 

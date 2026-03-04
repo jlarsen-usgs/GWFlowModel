@@ -11,7 +11,9 @@ import pandas as pd
 
 # todo: Test RIV packages
 # todo: Test WEL package
-# todo: Develop DRN package
+# todo: Test DRN package
+# todo: Develop RCH
+# todo: Develop EVT
 
 # todo: Look at best practices for iterating over solutions once we start transient
 
