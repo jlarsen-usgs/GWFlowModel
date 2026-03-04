@@ -1,0 +1,21 @@
+name: gwflow
+
+channels:
+  - conda-forge
+  - nodefaults
+
+dependencies:
+
+  # primary dependencies
+  - python
+  - git
+
+  # jupyter dependencies
+  - jupyter
+  - jupyterlab
+
+  # scipy stack
+  - numpy
+  - pandas
+  - matplotlib
+  - scipy
