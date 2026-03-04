@@ -7,3 +7,4 @@ from .initial_conditions import InitialConditions
 from .contant_head import ConstantHead
 from .general_head import GeneralHead
 from .river import River
+from .well import Well

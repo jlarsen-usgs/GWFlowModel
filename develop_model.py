@@ -10,7 +10,7 @@ import pandas as pd
 # todo: GHB is good for now. Maybe think about doing a transient solution?
 
 # todo: Test RIV packages
-# todo: Develop WEL package
+# todo: Test WEL package
 # todo: Develop DRN package
 
 # todo: Look at best practices for iterating over solutions once we start transient
