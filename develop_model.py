@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 
 # todo: get isactive set up in the coeficient matrix. TODO!!!
-#   think about how to recast stuff for internal storage and unstructured
+# #   think about how to recast stuff for internal storage and unstructured
 #   grids (no entries for inactive cells)
 
 # todo: look at CHD stuff, this doesn't make sense to me
@@ -29,16 +29,22 @@ isactive = np.ones(bottom.shape, dtype=int)
 hk = np.full((2, 10, 10), 2.54)
 vk = hk * 0.01
 shead = np.full((nlay, nrow, ncol), 10, dtype=float)
-# shead[0:5] = 2
-# shead[5:10] = 8
 
-chds = [9, 6]
+elevs = [9, 6]
 cheads = []
-for c, chd in zip([0, 9], chds):
+for c, chd in zip([0, 9], elevs):
     for r in range(nrow):
         cheads.append([0, r, c, chd, 1000])
 
+
+rch = np.full((nrow, ncol), 4e-02)
+rch[:, -1] = 0
+irch = np.zeros(rch.shape, dtype=int)
+
 df = pd.DataFrame(cheads, columns=["k", "i", "j", "elev", "cond"])
+df = df[df["j"] == 9]
+df = df.reset_index(drop=True)
+
 
 model = gwflow.GroundwaterFlow(modelname="test_model")
 dis = gwflow.packages.Discretization(model, nlay, nrow, ncol, delx, dely, top, bottom, isactive)
@@ -47,7 +53,8 @@ vn = dis.vertical_neighbors
 hyd = gwflow.packages.Hydraulics(model, hk, vk)
 ic = gwflow.packages.InitialConditions(model, shead)
 ghb = gwflow.packages.GeneralHead(model, df)
+rch = gwflow.packages.Recharge(model, rch, irch)
+xx = rch.rhs
 x = ghb.rhs
-# chd = gwflow.ConstantHead(model, df)
 
 model.solve(maxiters=5)

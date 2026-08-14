@@ -7,5 +7,6 @@ from .initial_conditions import InitialConditions
 from .contant_head import ConstantHead
 from .drain import Drain
 from .general_head import GeneralHead
+from .recharge import Recharge
 from .river import River
 from .well import Well
