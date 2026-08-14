@@ -6,6 +6,7 @@ from .initial_conditions import InitialConditions
 # Stress packages
 from .contant_head import ConstantHead
 from .drain import Drain
+from .evapotranspiration import Evapotranspiration
 from .general_head import GeneralHead
 from .recharge import Recharge
 from .river import River

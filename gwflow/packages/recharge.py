@@ -4,7 +4,7 @@ from .stress_package import StressPakBase
 
 class Recharge(StressPakBase):
     """
-    Constant head boundary condition package
+    Recharge boundary condition package
 
     Parameters
     ----------
