@@ -22,12 +22,11 @@ class Evapotranspiration(StressPakBase):
     def __init__(self, parent, evt_array, evt_surface, ext_depth, package_name="evt"):
         super().__init__(parent, package_name)
 
-        self._evt_array = evt_array.reshape((self._parent.ncpl,))
+        self._evt_array = -1 * np.abs(evt_array.reshape((self._parent.ncpl,)))
         self._evt_surface = evt_surface.reshape((self._parent.ncpl,))
-        self._ext_depth = np.abs(ext_depth.reshape((self._parent.ext_depth,)))
+        self._ext_depth = np.abs(ext_depth.reshape((self._parent.ncpl,)))
         self._ext_surface = self._evt_surface - self._ext_depth
 
-        self._evt_array = evt_array
         self._nodes = np.arange(self._parent.ncpl, dtype=int)
 
         self._cell_area = self._parent._dis.cell_area
@@ -54,10 +53,17 @@ class Evapotranspiration(StressPakBase):
             self._evt_array,
             0
         )
-
+        # todo: fix the rhs and hcof arrays (need to be adjusted by cell area)
         # 6-30b if True, else use previous calc from 6-30a or 6-30c
+        # remove hold from the equation????
+        # retnb = np.where(
+        #     (hold[self._nodes] <= self._evt_surface) & (hold[self._nodes] > self._ext_surface),
+        #     self._evt_array * ((hold[self._nodes] - self._ext_surface) / self._ext_depth),
+        #     retnb
+        # )
+
         retnb = np.where(
-            (hold[self._nodes] <= self._evt_surface) & (hold[self._nodes] > self._ext_surface),
+            (hold[self._nodes] <= self._evt_surface) & (hold[self._nodes] > self._ext_surface) & (self._evt_array < 0),
             self._evt_array * ((hold[self._nodes] - self._ext_surface) / self._ext_depth),
             retnb
         )
@@ -71,7 +77,16 @@ class Evapotranspiration(StressPakBase):
         Returns the head coefficient term that's added to the A matrix cross terms
         for the package
         """
-        return np.zeros((len(self._nodes)), dtype=float)
+        # HCOF may be EVTR.... in the case of 6-30b
+        hold = self._parent.hold
+
+        hcof = np.where(
+            hold[self._nodes] > self._ext_surface,
+            # (hold[self._nodes] <= self._evt_surface) & (hold[self._nodes] > self._ext_surface),
+            self._evt_array / self._ext_depth,
+            0
+        )
+        return -1 * hcof # np.zeros((len(self._nodes)), dtype=float)
 
     @staticmethod
     def data_columns():

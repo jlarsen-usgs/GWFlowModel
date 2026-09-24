@@ -23,6 +23,7 @@ class GroundwaterFlow:
         self._chd_pkgs = []
 
         # solution stuff
+        self._solver = None
         self._hold = None
         self._amat = None
         self._rhs = None
@@ -144,6 +145,30 @@ class GroundwaterFlow:
                     self._chd_pkgs.append(package)
                 else:
                     self._stress_pkgs.append(package)
+
+    def add_solver(self, solver):
+        """
+        Method to add a numerical solver to the model
+
+        Parameters
+        ----------
+        solver : gwflow.solvers.solver.Solver child object
+            Numerical solver for solving the groundwater flow
+            equation
+        """
+        import warnings
+        from .solvers.solver import Solver
+
+        if not isinstance(solver, Solver):
+            raise AssertionError(
+                f"solver {type(solver)} is not registered as a child "
+                f"class of gwflow.solvers.solver.Solver"
+            )
+
+        if self._solver is None:
+            self._solver = solver
+        else:
+            warnings.warn(f"Replacing existing solver with {type(solver)}", UserWarning)
 
     def calculate_conductance(self):
         """
@@ -380,7 +405,7 @@ class GroundwaterFlow:
             # x = amat.toarray()
         return self._amat
 
-    def solve(self, maxiters, htol=0.1):
+    def solve(self, maxiters, htol=0.1, dry_cell=np.nan):
         """
         Simple development solver. Non-transient
 
@@ -388,17 +413,21 @@ class GroundwaterFlow:
         -------
 
         """
-        hguess = self.hold
-        htol = np.full((self.nnodes,), htol, dtype=float)
+        if self._solver is None:
+            hguess = self.hold
+            htol = np.full((self.nnodes,), htol, dtype=float)
 
-        for _ in range(maxiters):
-            A = self.Amatix(update=True)
-            rhs = self.rhs(update=True)
-            h, info = gmres(A, rhs, x0=hguess, rtol=0.00001, atol=0.01)
+            for _ in range(maxiters):
+                A = self.Amatix(update=True)
+                rhs = self.rhs(update=True)
+                h, info = gmres(A, rhs, x0=hguess, rtol=0.00001, atol=0.01)
 
-            if np.abs(np.sum(h - hguess)) > np.abs(np.sum(htol)):
-               hguess = h
-            else:
-                break
-
-        return h
+                if np.abs(np.nansum(h - hguess)) > np.abs(np.nansum(htol)):
+                   hguess = h
+                else:
+                    break
+            h = np.where(h < self._dis.bottoms, np.nan, h)
+            return h
+        else:
+            h = self._solver.outer_solve()
+            return h

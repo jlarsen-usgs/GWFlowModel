@@ -1,7 +1,9 @@
 import gwflow
 import numpy as np
 import pandas as pd
-
+import matplotlib.pyplot as plt
+import matplotlib
+# matplotlib.use("tkagg")
 # todo: get isactive set up in the coeficient matrix. TODO!!!
 # #   think about how to recast stuff for internal storage and unstructured
 #   grids (no entries for inactive cells)
@@ -45,6 +47,10 @@ df = pd.DataFrame(cheads, columns=["k", "i", "j", "elev", "cond"])
 df = df[df["j"] == 9]
 df = df.reset_index(drop=True)
 
+pet = np.full((nrow, ncol), 0., dtype=float)
+pet[:, -1] = 0.40
+pet_surf = top.copy()
+pet_ext = pet_surf - 6
 
 model = gwflow.GroundwaterFlow(modelname="test_model")
 dis = gwflow.packages.Discretization(model, nlay, nrow, ncol, delx, dely, top, bottom, isactive)
@@ -53,8 +59,23 @@ vn = dis.vertical_neighbors
 hyd = gwflow.packages.Hydraulics(model, hk, vk)
 ic = gwflow.packages.InitialConditions(model, shead)
 ghb = gwflow.packages.GeneralHead(model, df)
+# evt = gwflow.packages.Evapotranspiration(model, pet, pet_surf, pet_ext)
 rch = gwflow.packages.Recharge(model, rch, irch)
-xx = rch.rhs
-x = ghb.rhs
 
-model.solve(maxiters=5)
+ssor = gwflow.solvers.SorSolver(model, mxiter=100, relax=1.6)
+#xe = np.sum(evt.rhs)
+#xr = np.sum(rch.rhs)
+# x = ghb.rhs
+
+h = model.solve()
+
+h = h.reshape(model.shape)
+vmin = np.min(h)
+vmax = np.max(h)
+fig, axs = plt.subplots(ncols=2)
+for i in range(2):
+    pc = axs[i].imshow(h[i], vmin=vmin, vmax=vmax)
+
+plt.colorbar(pc)
+plt.show()
+# plt.savefig("test.png")
