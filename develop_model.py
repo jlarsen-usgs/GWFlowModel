@@ -64,6 +64,7 @@ rch = gwflow.packages.Recharge(model, rch, irch)
 
 # ssor = gwflow.solvers.SorSolver(model, mxoutiter=100, relax=1.6)
 cg = gwflow.solvers.ConjugateGradient(model, mxoutiter=100)
+bicg = gwflow.solvers.BiCGStabilized(model, mxoutiter=100, precondition=True)
 #xe = np.sum(evt.rhs)
 #xr = np.sum(rch.rhs)
 # x = ghb.rhs

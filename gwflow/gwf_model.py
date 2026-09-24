@@ -168,7 +168,9 @@ class GroundwaterFlow:
         if self._solver is None:
             self._solver = solver
         else:
-            warnings.warn(f"Replacing existing solver with {type(solver)}", UserWarning)
+            print(f"WARNING: Existing {type(self._solver)} found!")
+            print(f"Replacing existing solver with {type(solver)}")
+            self._solver = solver
 
     def calculate_conductance(self):
         """

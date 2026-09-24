@@ -7,9 +7,9 @@ from scipy.sparse import SparseEfficiencyWarning
 warnings.simplefilter('ignore', SparseEfficiencyWarning)
 
 
-class ConjugateGradient(Solver):
+class BiCGStabilized(Solver):
     """
-    Conjugate gradient solver
+    Bi-Conjugate gradient Stabilized solver
 
     Parameters
     ----------
@@ -36,7 +36,7 @@ class ConjugateGradient(Solver):
         boolean flag to use Polack-Ribiere Beta calculation
         instead of the Fletcher-Reeves formaulation. Can
         improve convergence for unstable solutions. Default
-        is True.
+        is False.
         See https://en.wikipedia.org/wiki/Nonlinear_conjugate_gradient_method
         for more information.
 
@@ -47,14 +47,13 @@ class ConjugateGradient(Solver):
         mxoutiter=100,
         mxiniter=100,
         hclose=1e-4,
-        outer_close=1e-5,
-        recalc_flux_resid=10,
+        outer_close=1e-4,
+        recalc_flux_resid=5,
         precondition=True,
         pc_drop_tol=1e-4,
         pc_fill_lev=10,
-        polak_ribiere_beta=True
+        polak_ribiere_beta=False
     ):
-
         super().__init__(model, mxoutiter, mxiniter, hclose, outer_close)
         self._recalc_flux_resid = recalc_flux_resid
         self._precondition = precondition
@@ -74,8 +73,8 @@ class ConjugateGradient(Solver):
 
     def preconditioned_inner_solve(self, A, b, hold):
         """
-        Preconditioned Conjugate gradient solver for A*x = b
-        using incomplete ILU preconditioning
+        Preconditioned Bi-Conjugate gradient stabilized solver
+        for A*x = b using incomplete ILU preconditioning
 
         A : scipy.sparse.csr_matrix
             head coeficient matrix
@@ -98,22 +97,28 @@ class ConjugateGradient(Solver):
         x_old = x0.copy()
         while niter < self._mxiniter:
             Ap = A.dot(pk0)
-            alpha = (np.dot(rk0.T, zk0)) / (np.dot(pk0.T, Ap))
-            x0 = x_old + alpha * pk0
+            alpha = (np.dot(rk0.T, zk0)) / (np.dot(Ap, pk0.T))
+            sk = rk0 - alpha * Ap
+            Ask = A.dot(sk)
+            wk = (np.dot(Ask, sk)) / (np.dot(Ask, Ask))
+            x0 = x_old + alpha * pk0 # + wk * sk
+
             if (niter + 1) % self._recalc_flux_resid == 0:
                 rk1 = b - A.dot(x0)
             else:
-                rk1 = rk0 - Ap * alpha
+                rk1 = sk - wk * Ask
 
             zk1 = M.solve(rk1)
-            # use the Polak-Ribiere formulation for beta to speed
-            # convergence
+
             if self._pr_beta:
+                # use the Polak-Ribiere formulation for unstable solutions
                 dzk = zk1 - zk0
-                beta = ((np.dot(rk1.T, dzk)) / (np.dot(rk0.T, zk0)))
+                cg_beta = ((np.dot(rk1.T, dzk)) / (np.dot(rk0.T, zk0)))
             else:
-                beta = ((np.dot(rk1.T, zk1)) / (np.dot(rk0.T, zk0)))
-            pk1 = zk1 + beta * pk0
+                cg_beta = ((np.dot(rk1.T, zk1)) / (np.dot(rk0.T, zk0)))
+
+            beta = (alpha / wk) * cg_beta
+            pk1 = rk1 + beta * (pk0 - wk * Ap)
 
             resid = np.abs(x0 - x_old)
             rix = np.where(resid > self._hclose)[0]
@@ -154,20 +159,27 @@ class ConjugateGradient(Solver):
 
         x0 = np.array(hold)
         rk0 = b - A.dot(x0)
+        r0 = rk0.copy()
         pk0 = rk0.copy()
         niter = 0
 
         x_old = x0.copy()
         while niter < self._mxiniter:
             Ap = A.dot(pk0)
-            alpha = (np.dot(rk0.T, rk0)) / (np.dot(pk0.T, Ap))
-            x0 = x_old + alpha * pk0
+            alpha = (np.dot(rk0.T, r0)) / (np.dot(Ap, r0.T))
+            sk = rk0 - alpha * Ap
+            Ask = A.dot(sk)
+            wk = (np.dot(Ask, sk)) / (np.dot(Ask, Ask))
+            x0 = x_old + alpha * pk0 + wk * sk
+
             if (niter + 1) % self._recalc_flux_resid == 0:
                 rk1 = b - A.dot(x0)
             else:
-                rk1 = rk0 - Ap * alpha
-            beta = -1 * ((np.dot(rk1.T, Ap)) / (np.dot(pk0.T, Ap)))
-            pk1 = rk1 + beta * pk0
+                rk1 = sk - wk * Ask
+
+            cg_beta = (np.dot(rk1, r0.T)) / (np.dot(rk0, r0.T))
+            beta = (alpha / wk) * cg_beta
+            pk1 = rk1 + beta * (pk0 - wk * Ap)
 
             resid = np.abs(x0 - x_old)
             rix = np.where(resid > self._hclose)[0]

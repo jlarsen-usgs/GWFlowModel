@@ -56,7 +56,6 @@ class Solver:
             ixs = np.where(resid > self._rhs_close)[0]
             if len(ixs) > 0:
                 # todo: need to pass new hold through HCOF and RHS calculations
-                # hold = hd.copy()
                 # todo: hack for moment is setting hold to self._model._hold
                 self._model._hold = hd.copy()
                 niter += 1
