@@ -405,7 +405,7 @@ class GroundwaterFlow:
             # x = amat.toarray()
         return self._amat
 
-    def solve(self, maxiters, htol=0.1, dry_cell=np.nan):
+    def solve(self, maxiters=5, htol=0.1, dry_cell=np.nan):
         """
         Simple development solver. Non-transient
 
@@ -426,8 +426,9 @@ class GroundwaterFlow:
                    hguess = h
                 else:
                     break
-            h = np.where(h < self._dis.bottoms, np.nan, h)
-            return h
+
         else:
             h = self._solver.outer_solve()
-            return h
+
+        h = np.where(h < self._dis.bottoms, dry_cell, h)
+        return h

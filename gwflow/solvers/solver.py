@@ -8,16 +8,23 @@ class Solver:
     Parameters
     ----------
     model : GroundwaterFlow object
-    mxiters : int
-        maximum number of iterations
-    rclose : float
-        residual closure criteria (cell x cell basis)
+    mxoutiter : int
+        maximum number of outer iterations
+    mxiniter : int
+        maximum number of inner iterations
+    hclose : float
+        residual closure criteria (cell x cell basis) for the
+        inner iteration loop (head based)
+    rhs_close : float
+        residual closure criteria (cell x cell based) for the
+        outer iteration loop (rhs, flux based)
     """
-    def __init__(self, model, mxiter, rclose, outer_close):
+    def __init__(self, model, mxoutiter, mxiniter, hclose, rhs_close):
         self._model = model
-        self._mxiter = mxiter
-        self._rclose = rclose
-        self._outer_close = outer_close
+        self._mxoutiter = mxoutiter
+        self._mxiniter = mxiniter
+        self._hclose = hclose
+        self._rhs_close = rhs_close
 
         self._model.add_solver(self)
 
@@ -35,7 +42,7 @@ class Solver:
         """
         niter = 0
         hd = self._model.hold.copy()
-        while niter < self._mxiter:
+        while niter < self._mxoutiter:
             Amat = self._model.Amatix(update=True)
             rhs = self._model.rhs(update=True)
             hold = self._model.hold
@@ -46,15 +53,15 @@ class Solver:
             est_b = Amat.dot(hd)
             resid = np.abs(est_b - rhs)
 
-            ixs = np.where(resid > self._outer_close)[0]
+            ixs = np.where(resid > self._rhs_close)[0]
             if len(ixs) > 0:
                 # todo: need to pass new hold through HCOF and RHS calculations
                 # hold = hd.copy()
                 # todo: hack for moment is setting hold to self._model._hold
                 self._model._hold = hd.copy()
                 niter += 1
-                if niter == self._mxiter:
-                    raise Exception(f"Outer solution did not converge after {self._mxiter} iterations")
+                if niter == self._mxoutiter:
+                    raise Exception(f"Outer solution did not converge after {niter} iterations")
             else:
                 # converged
                 niter += 1
@@ -62,5 +69,5 @@ class Solver:
 
         return hd
 
-    def solve(self):
+    def inner_solve(self, A, b, hold):
         raise AssertionError("must be specified in child class")

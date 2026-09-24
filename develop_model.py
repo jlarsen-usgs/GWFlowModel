@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib
-# matplotlib.use("tkagg")
+matplotlib.use("tkagg")
 # todo: get isactive set up in the coeficient matrix. TODO!!!
 # #   think about how to recast stuff for internal storage and unstructured
 #   grids (no entries for inactive cells)
@@ -62,7 +62,8 @@ ghb = gwflow.packages.GeneralHead(model, df)
 # evt = gwflow.packages.Evapotranspiration(model, pet, pet_surf, pet_ext)
 rch = gwflow.packages.Recharge(model, rch, irch)
 
-ssor = gwflow.solvers.SorSolver(model, mxiter=100, relax=1.6)
+# ssor = gwflow.solvers.SorSolver(model, mxoutiter=100, relax=1.6)
+cg = gwflow.solvers.ConjugateGradient(model, mxoutiter=100)
 #xe = np.sum(evt.rhs)
 #xr = np.sum(rch.rhs)
 # x = ghb.rhs
