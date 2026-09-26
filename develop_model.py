@@ -8,16 +8,19 @@ matplotlib.use("tkagg")
 # #   think about how to recast stuff for internal storage and unstructured
 #   grids (no entries for inactive cells)
 
-# todo: look at CHD stuff, this doesn't make sense to me
-# todo: GHB is good for now. Maybe think about doing a transient solution?
 
+# todo: Test GHB packages
 # todo: Test RIV packages
 # todo: Test WEL package
 # todo: Test DRN package
-# todo: Develop RCH
-# todo: Develop EVT
+# todo: Test RCH package
+# todo: Test EVT package
+# todo: develop HFB package next...
 
 # todo: Look at best practices for iterating over solutions once we start transient
+#  todo: extend solver/solutions for transient.
+#  todo: consider adding a GMRES solver to compliment the existing solvers
+#  todo: consider adding in a NWT solver solution space for the GWF model too
 
 nlay = 2
 nrow = 10
@@ -48,23 +51,23 @@ df = df[df["j"] == 9]
 df = df.reset_index(drop=True)
 
 pet = np.full((nrow, ncol), 0., dtype=float)
-pet[:, -1] = 0.40
+pet[:, -1] = 0.045
 pet_surf = top.copy()
-pet_ext = pet_surf - 6
+pet_ext = pet_surf - 8
 
 model = gwflow.GroundwaterFlow(modelname="test_model")
 dis = gwflow.packages.Discretization(model, nlay, nrow, ncol, delx, dely, top, bottom, isactive)
-n = dis.neighbors
-vn = dis.vertical_neighbors
+# n = dis.neighbors
+# vn = dis.vertical_neighbors
 hyd = gwflow.packages.Hydraulics(model, hk, vk)
 ic = gwflow.packages.InitialConditions(model, shead)
-ghb = gwflow.packages.GeneralHead(model, df)
-# evt = gwflow.packages.Evapotranspiration(model, pet, pet_surf, pet_ext)
+# ghb = gwflow.packages.GeneralHead(model, df)
+evt = gwflow.packages.Evapotranspiration(model, pet, pet_surf, pet_ext)
 rch = gwflow.packages.Recharge(model, rch, irch)
 
 # ssor = gwflow.solvers.SorSolver(model, mxoutiter=100, relax=1.6)
-cg = gwflow.solvers.ConjugateGradient(model, mxoutiter=100)
-bicg = gwflow.solvers.BiCGStabilized(model, mxoutiter=100, precondition=True)
+cg = gwflow.solvers.ConjugateGradient(model, mxoutiter=100, hclose=1e-4, outer_close=1e-6)
+# bicg = gwflow.solvers.BiCGStabilized(model, mxoutiter=100, precondition=True)
 #xe = np.sum(evt.rhs)
 #xr = np.sum(rch.rhs)
 # x = ghb.rhs

@@ -365,14 +365,8 @@ class GroundwaterFlow:
                         diag_coef[node] = 1
                         conductance[node, :] = 0
                         vcond[node, :] = 0
-                    # for idx in range(7):
-                    #     coef = 0
-                    #     if idx == 3:
-                    #         coef = 1
-                    #     idx = np.full(nodes.size, idx, dtype=int)
-                    #     mat_coefs[idx, nodes] = coef
 
-            # todo: need to create r,c indicies for the matrix coeficients from neighbors
+            # create r,c indicies for the matrix coeficients from neighbors
             row = list(range(0, self.nnodes))
             col = list(range(0, self.nnodes))
             data = [i for i in diag_coef]
@@ -397,12 +391,7 @@ class GroundwaterFlow:
                 (data, (row, col)),
                 shape=(self.nnodes, self.nnodes)
             )
-            # check = csr_mat.toarray()
 
-            # amat = sp.sparse.dia_array(
-            #      (mat_coefs, offsets),
-            #      shape=(self.nnodes, self.nnodes)
-            # )
             self._amat = csr_mat
             # x = amat.toarray()
         return self._amat

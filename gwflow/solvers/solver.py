@@ -49,6 +49,10 @@ class Solver:
 
             hd = self.inner_solve(Amat, rhs, hold)
 
+            # todo: need to trap for potentially dry cells....
+            #  if cells dry out we need to update the conductance
+            #  terms and set h to a dry cell number
+
             # if (Ax - rhs) > resid of rhs, iterate again and recalculate Amat and rhs using new heads
             est_b = Amat.dot(hd)
             resid = np.abs(est_b - rhs)

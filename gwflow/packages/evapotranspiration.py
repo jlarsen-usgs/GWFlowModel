@@ -22,14 +22,15 @@ class Evapotranspiration(StressPakBase):
     def __init__(self, parent, evt_array, evt_surface, ext_depth, package_name="evt"):
         super().__init__(parent, package_name)
 
-        self._evt_array = -1 * np.abs(evt_array.reshape((self._parent.ncpl,)))
+        self._evt_array = np.abs(evt_array.reshape((self._parent.ncpl,)))
+
         self._evt_surface = evt_surface.reshape((self._parent.ncpl,))
         self._ext_depth = np.abs(ext_depth.reshape((self._parent.ncpl,)))
         self._ext_surface = self._evt_surface - self._ext_depth
 
         self._nodes = np.arange(self._parent.ncpl, dtype=int)
-
         self._cell_area = self._parent._dis.cell_area
+        self._evtr = self._evt_array * self._cell_area[self._nodes]
 
     @property
     def nodes(self):
@@ -48,28 +49,31 @@ class Evapotranspiration(StressPakBase):
         hold = self._parent.hold
 
         # 6-30a if True, fill with 6-30c if False
-        retnb = np.where(
+        Qetnb = np.where(
             hold[self._nodes] > self._evt_surface,
-            self._evt_array,
+            self._evtr,
             0
         )
-        # todo: fix the rhs and hcof arrays (need to be adjusted by cell area)
         # 6-30b if True, else use previous calc from 6-30a or 6-30c
-        # remove hold from the equation????
-        # retnb = np.where(
-        #     (hold[self._nodes] <= self._evt_surface) & (hold[self._nodes] > self._ext_surface),
-        #     self._evt_array * ((hold[self._nodes] - self._ext_surface) / self._ext_depth),
-        #     retnb
-        # )
-
-        retnb = np.where(
-            (hold[self._nodes] <= self._evt_surface) & (hold[self._nodes] > self._ext_surface) & (self._evt_array < 0),
-            self._evt_array * ((hold[self._nodes] - self._ext_surface) / self._ext_depth),
-            retnb
+        # refactor equation 6-30b to
+        #    Evtr * h       Evtr * surf     Evtr * Extdp
+        #    --------   -   -----------  -  ------------
+        #      Extdp           Extdp            Extdp
+        #
+        #    HCOF term  |          RHS TERMS
+        Qetnb = np.where(
+            (self._ext_surface <= hold[self._nodes]) & (hold[self._nodes] <= self._evt_surface),
+            self._evtr - ((self._evtr * self._evt_surface) / self._ext_depth),
+            Qetnb
         )
 
-        Qn = retnb * self._cell_area[self._nodes]
-        return -1 * Qn
+        Qetnb = np.where(
+            hold[self._nodes] < self._ext_surface,
+            0,
+            Qetnb
+        )
+
+        return -1 * Qetnb
 
     @property
     def hcof(self):
@@ -77,16 +81,16 @@ class Evapotranspiration(StressPakBase):
         Returns the head coefficient term that's added to the A matrix cross terms
         for the package
         """
-        # HCOF may be EVTR.... in the case of 6-30b
+        # HCOF calculation definition is in the comments of RHS
         hold = self._parent.hold
 
         hcof = np.where(
             hold[self._nodes] > self._ext_surface,
-            # (hold[self._nodes] <= self._evt_surface) & (hold[self._nodes] > self._ext_surface),
-            self._evt_array / self._ext_depth,
+            self._evtr / self._ext_depth,
             0
         )
-        return -1 * hcof # np.zeros((len(self._nodes)), dtype=float)
+
+        return -1 * hcof
 
     @staticmethod
     def data_columns():
